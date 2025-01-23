@@ -89,10 +89,10 @@ class Maze:
             self._cells[i][j].has_left = False
             if i > 0:
                 self._cells[i - 1][j].has_right = False
-        if direction == (1, 0):
-            self._cells[i][j].has_right = False
-            if i < self.num_cols - 1:
-                self._cells[i + 1][j].has_left = False
+        if direction == (0, -1):
+            self._cells[i][j].has_top = False
+            if j > 0:
+                self._cells[i][j - 1].has_left = False
 
     def _break_walls_r(self, i, j):
         self._cells[i][j].visited = True
