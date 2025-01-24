@@ -23,16 +23,16 @@ class Cell:
         self._y2 = y + size_y
 
     def get_center_point(self):
-        return Point((self._x1 + self._x2),(self._y1 + self._y2))
+        return Point((self._x1 + self._x2)//2,(self._y1 + self._y2)//2)
 
     def draw(self):
         self._win.draw_line(Line(Point(self._x1, self._y1), Point(self._x2, self._y1)), "red" if self.has_top else "gray")
-        self._win.draw_line(Line(Point(self._x1, self._y2), Point(self._x2, self._y2)), "red" if self.has_top else "gray")
-        self._win.draw_line(Line(Point(self._x1, self._y1), Point(self._x1, self._y2)), "red" if self.has_top else "gray")
-        self._win.draw_line(Line(Point(self._x2, self._y1), Point(self._x2, self._y2)), "red" if self.has_top else "gray")
+        self._win.draw_line(Line(Point(self._x1, self._y2), Point(self._x2, self._y2)), "red" if self.has_bottom else "gray")
+        self._win.draw_line(Line(Point(self._x1, self._y1), Point(self._x1, self._y2)), "red" if self.has_left else "gray")
+        self._win.draw_line(Line(Point(self._x2, self._y1), Point(self._x2, self._y2)), "red" if self.has_right else "gray")
 
     def draw_move(self, to_cell, undo=False):
-        self._win.draw_line(Line(self.get_center_point(), to_cell.get_center_point()), "red" if undo else "gray")
+        self._win.draw_line(Line(self.get_center_point(), to_cell.get_center_point()), "black" if undo else "green")
 
 class Maze:
     def __init__(self, x1, y1, num_rows, num_cols, cell_size_x, cell_size_y, win=None, seed=None):
@@ -46,6 +46,9 @@ class Maze:
         self._create_cells()
         if seed != None:
             random.seed(seed)
+        self._break_entrance_and_exit()
+        self._break_walls_r(0, 0)
+        self._reset_cells_visited()
 
     def _create_cells(self):
         self._cells = []
@@ -67,10 +70,10 @@ class Maze:
 
     def _animate(self):
         self.win.redraw()
-        time.sleep(50)
+        time.sleep(1)
 
 
-    def _break_entrance_and_exit():
+    def _break_entrance_and_exit(self):
         self._cells[0][0].has_top = False
         self._cells[0][0].draw()
         self._cells[self.num_cols - 1][self.num_rows - 1].has_bottom = False
@@ -100,8 +103,10 @@ class Maze:
             need_visit = []
             four_dir = [(-1, 0), (0, -1), (1, 0), (0, 1)]
             for dc, dr in four_dir:
-                if i + dc >=0 and i + dc < self.num_cols and not self._cells[i + dc][j + dr].visited:
-                    need_visit.append((dc, dr))
+                if i + dc in range(0, self.num_cols):
+                    if j + dr in range(0, self.num_rows):
+                        if not self._cells[i + dc][j + dr].visited:
+                            need_visit.append((dc, dr))
             if len(need_visit) == 0:
                 self._cells[i][j].draw()
                 return
@@ -109,8 +114,52 @@ class Maze:
             self._break_boundary(i, j, direction)
             self._break_walls_r(i + direction[0], j + direction[1])
 
+    def _reset_cells_visited(self):
+        for a_col in self._cells:
+            for a_cell in a_col:
+                a_cell.visited = False
 
-
-
-
+    def solve(self):
+        return self._solve_r(0, 0)
+    
+    def check_blocked(self, i, j, a_dir):
+        if a_dir == (1, 0):
+            if self._cells[i][j].has_right:
+                return True
+            return False
+        if a_dir == (0, 1):
+            if self._cells[i][j].has_bottom:
+                return True
+            return False
+        if a_dir == (-1, 0):
+            if self._cells[i][j].has_left:
+                return True
+            return False
+        if a_dir == (0, -1):
+            if self._cells[i][j].has_top:
+                return True
+            return False
         
+
+    def _solve_r(self, i, j):
+        self._animate()
+        self._cells[i][j].visited = True
+        print(f"Checking CELL:{i}:{j}:")
+        if i == self.num_cols - 1 and j == self.num_rows - 1:
+            print(f"REACHED GOAL!")
+            return True
+        four_dir = [(-1, 0), (0, -1), (1, 0), (0, 1)]
+        for a_dir in four_dir:
+            next_i = i + a_dir[0]
+            next_j = j + a_dir[1]
+            if next_i in range(0, self.num_cols) and next_j in range(0, self.num_rows):
+                if not self.check_blocked(i, j, a_dir):
+                    if not self._cells[next_i][next_j].visited:
+                        self._cells[i][j].draw_move(self._cells[next_i][next_j])
+                        if self._solve_r(next_i, next_j):
+                            print(f"NEXTDIR:{a_dir}:NEXT:{next_i},{next_j}:")
+                            return True
+                        self._cells[i][j].draw_move(self._cells[next_i][next_j], undo=True)
+        print(f"CELL {i},{j} Blocked all around")
+        return False
+
